@@ -33,6 +33,10 @@
     ],
     "keybindings": [
       {
+        "command": "lookup.showPrompt",
+        "key": "ctrl+l"
+      },
+      {
         "command": "lookup.autocomplete",
         "key": "tab",
         "when": "lookup.isQuickPickOpen"
