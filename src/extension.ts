@@ -1,39 +1,19 @@
 import { access, writeFile } from "fs/promises";
 import path from "path";
 import * as vscode from "vscode";
-
-type LookupQuickPickItem = {
-  action?: "create" | "open";
-  uri?: vscode.Uri;
-} & vscode.QuickPickItem;
-
-export const takeWhile = <A>(fn: (a: A) => boolean, arr: A[]): A[] => {
-  if (arr.length === 0) {
-    return [];
-  }
-
-  const [x, ...xs] = arr;
-  if (fn(x)) {
-    return [x, ...takeWhile(fn, xs)];
-  } else {
-    return [];
-  }
-};
+import {
+  LookupQuickPickItem,
+  buildSearchPattern,
+  extractSuffix,
+  makeCreateItem,
+  rotateSuffixes,
+  rotateSuffixesBackward,
+} from "./lookup.js";
 
 const ITEM_SEPARATOR: LookupQuickPickItem = {
   label: "Header",
   kind: vscode.QuickPickItemKind.Separator,
   alwaysShow: true,
-};
-
-const makeCreateItem = (uri: vscode.Uri): LookupQuickPickItem => {
-  return {
-    label: "Create",
-    alwaysShow: true,
-    detail: "File does not exist. Create?",
-    action: "create",
-    uri,
-  };
 };
 
 export async function showPrompt(
@@ -101,7 +81,7 @@ export async function showPrompt(
       // Use a glob pattern for prefix matching
       // Example: "src/app" becomes "**/src/app*"
 
-      const pattern = value === "" ? "**/*" : `${value}*`;
+      const pattern = buildSearchPattern(value);
 
       quickPick.busy = true; // Show loading indicator
       try {
@@ -113,7 +93,7 @@ export async function showPrompt(
         const uriItems: LookupQuickPickItem[] = uris.map((uri) => {
           const relative = vscode.workspace.asRelativePath(uri);
 
-          const suffix = relative.substring(value.length).split(".", 1)[0];
+          const suffix = extractSuffix(relative, value);
 
           if (state.baseValue === value && !suffixes.has(suffix)) {
             state.suffixes = [...state.suffixes, suffix];
@@ -258,7 +238,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     activeQuickPick.value = state.baseValue + state.suffixes[0];
-    state.suffixes = [...state.suffixes.slice(1), state.suffixes[0]];
+    state.suffixes = rotateSuffixes(state.suffixes);
   });
 
   vscode.commands.registerCommand("lookup.autocompleteBackwards", () => {
@@ -271,11 +251,8 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    const lastSuffix = state.suffixes.pop();
-    if (lastSuffix) {
-      activeQuickPick.value = state.baseValue + lastSuffix;
-      state.suffixes = [lastSuffix, ...state.suffixes];
-    }
+    state.suffixes = rotateSuffixesBackward(state.suffixes);
+    activeQuickPick.value = state.baseValue + state.suffixes[0];
   });
 }
 

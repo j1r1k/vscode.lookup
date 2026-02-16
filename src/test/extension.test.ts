@@ -1,15 +1,35 @@
-import * as assert from 'assert';
+import * as assert from "assert";
+import * as vscode from "vscode";
 
-// You can import and use all API from the 'vscode' module
-// as well as import your extension to test it
-import * as vscode from 'vscode';
-// import * as myExtension from '../../extension';
+suite("Extension Test Suite", () => {
+  test("Extension activates successfully", async () => {
+    const extension = vscode.extensions.getExtension("marsi-dev.lookup");
+    assert.ok(extension, "Extension should be found");
+    await extension!.activate();
+    assert.strictEqual(extension!.isActive, true);
+  });
 
-suite('Extension Test Suite', () => {
-	vscode.window.showInformationMessage('Start all tests.');
+  test("lookup.showPrompt command is registered", async () => {
+    const commands = await vscode.commands.getCommands(true);
+    assert.ok(
+      commands.includes("lookup.showPrompt"),
+      "lookup.showPrompt should be registered",
+    );
+  });
 
-	test('Sample test', () => {
-		assert.strictEqual(-1, [1, 2, 3].indexOf(5));
-		assert.strictEqual(-1, [1, 2, 3].indexOf(0));
-	});
+  test("lookup.autocomplete command is registered", async () => {
+    const commands = await vscode.commands.getCommands(true);
+    assert.ok(
+      commands.includes("lookup.autocomplete"),
+      "lookup.autocomplete should be registered",
+    );
+  });
+
+  test("lookup.autocompleteBackwards command is registered", async () => {
+    const commands = await vscode.commands.getCommands(true);
+    assert.ok(
+      commands.includes("lookup.autocompleteBackwards"),
+      "lookup.autocompleteBackwards should be registered",
+    );
+  });
 });
