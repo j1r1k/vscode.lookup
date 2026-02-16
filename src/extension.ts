@@ -5,6 +5,7 @@ import {
   LookupQuickPickItem,
   buildSearchPattern,
   extractSuffix,
+  filterSuffixes,
   makeCreateItem,
   rotateSuffixes,
   rotateSuffixesBackward,
@@ -22,6 +23,8 @@ export async function showPrompt(
     baseValue: string | undefined;
     activeValue: string | undefined;
     suffixes: string[];
+    typedPrefix: string | undefined;
+    filteredSuffixes: string[];
   },
   workspaceRoot: string,
   initialValue: string | undefined,
@@ -72,6 +75,9 @@ export async function showPrompt(
       //   quickPick.items = [];
       //   return;
       // }
+
+      state.typedPrefix = undefined;
+      state.filteredSuffixes = [];
 
       if (value.endsWith("/") || value.endsWith(".")) {
         state.suffixes = [];
@@ -161,11 +167,15 @@ export function activate(context: vscode.ExtensionContext) {
     baseValue: string | undefined;
     activeValue: string | undefined;
     suffixes: string[];
+    typedPrefix: string | undefined;
+    filteredSuffixes: string[];
   } = {
     quickPick: undefined,
     baseValue: undefined,
     activeValue: undefined,
     suffixes: [],
+    typedPrefix: undefined,
+    filteredSuffixes: [],
   };
 
   const disposable = vscode.commands.registerCommand(
@@ -193,6 +203,8 @@ export function activate(context: vscode.ExtensionContext) {
       state.baseValue = undefined;
       state.activeValue = undefined;
       state.suffixes = [];
+      state.typedPrefix = undefined;
+      state.filteredSuffixes = [];
 
       const lookupResult = await showPrompt(
         state,
@@ -233,12 +245,22 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    if (state.suffixes.length === 0) {
+    if (state.typedPrefix === undefined) {
+      state.typedPrefix = activeQuickPick.value.substring(
+        (state.baseValue ?? "").length,
+      );
+      state.filteredSuffixes = filterSuffixes(
+        state.suffixes,
+        state.typedPrefix,
+      );
+    }
+
+    if (state.filteredSuffixes.length === 0) {
       return;
     }
 
-    activeQuickPick.value = state.baseValue + state.suffixes[0];
-    state.suffixes = rotateSuffixes(state.suffixes);
+    activeQuickPick.value = state.baseValue + state.filteredSuffixes[0];
+    state.filteredSuffixes = rotateSuffixes(state.filteredSuffixes);
   });
 
   vscode.commands.registerCommand("lookup.autocompleteBackwards", () => {
@@ -247,12 +269,22 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    if (state.suffixes.length === 0) {
+    if (state.typedPrefix === undefined) {
+      state.typedPrefix = activeQuickPick.value.substring(
+        (state.baseValue ?? "").length,
+      );
+      state.filteredSuffixes = filterSuffixes(
+        state.suffixes,
+        state.typedPrefix,
+      );
+    }
+
+    if (state.filteredSuffixes.length === 0) {
       return;
     }
 
-    state.suffixes = rotateSuffixesBackward(state.suffixes);
-    activeQuickPick.value = state.baseValue + state.suffixes[0];
+    state.filteredSuffixes = rotateSuffixesBackward(state.filteredSuffixes);
+    activeQuickPick.value = state.baseValue + state.filteredSuffixes[0];
   });
 }
 

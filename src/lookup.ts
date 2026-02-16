@@ -40,6 +40,10 @@ export const rotateSuffixesBackward = (suffixes: string[]): string[] => {
   return [suffixes[suffixes.length - 1], ...suffixes.slice(0, -1)];
 };
 
+export const filterSuffixes = (suffixes: string[], prefix: string): string[] => {
+  return suffixes.filter(s => s.startsWith(prefix));
+};
+
 export const makeCreateItem = (uri: vscode.Uri): LookupQuickPickItem => {
   return {
     label: "Create",

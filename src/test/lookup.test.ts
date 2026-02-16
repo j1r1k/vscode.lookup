@@ -4,6 +4,7 @@ import {
   takeWhile,
   buildSearchPattern,
   extractSuffix,
+  filterSuffixes,
   rotateSuffixes,
   rotateSuffixesBackward,
   makeCreateItem,
@@ -95,6 +96,30 @@ suite("rotateSuffixesBackward", () => {
     assert.deepStrictEqual(
       rotateSuffixesBackward(["a", "b", "c"]),
       ["c", "a", "b"],
+    );
+  });
+});
+
+suite("filterSuffixes", () => {
+  test("returns empty for empty suffixes", () => {
+    assert.deepStrictEqual(filterSuffixes([], "co"), []);
+  });
+
+  test("returns empty when no matches", () => {
+    assert.deepStrictEqual(filterSuffixes(["utils", "lib"], "co"), []);
+  });
+
+  test("returns only matching suffixes", () => {
+    assert.deepStrictEqual(
+      filterSuffixes(["components/Button", "config", "utils"], "co"),
+      ["components/Button", "config"],
+    );
+  });
+
+  test("returns all suffixes for empty prefix", () => {
+    assert.deepStrictEqual(
+      filterSuffixes(["components/Button", "config", "utils"], ""),
+      ["components/Button", "config", "utils"],
     );
   });
 });
