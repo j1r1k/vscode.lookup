@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 0.1.0). Leave empty to use package.json version."
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run compile
+
+      - name: Verify version
+        id: version
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            TAG_VERSION="${GITHUB_REF_NAME#v}"
+            if [[ "$PKG_VERSION" != "$TAG_VERSION" ]]; then
+              echo "::error::package.json version ($PKG_VERSION) does not match tag ($TAG_VERSION). Run 'npm version $TAG_VERSION --no-git-tag-version' and commit before tagging."
+              exit 1
+            fi
+            VERSION="$TAG_VERSION"
+          elif [[ -n "${{ inputs.version }}" ]]; then
+            if [[ "$PKG_VERSION" != "${{ inputs.version }}" ]]; then
+              echo "::error::package.json version ($PKG_VERSION) does not match requested version (${{ inputs.version }}). Update package.json first."
+              exit 1
+            fi
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="$PKG_VERSION"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Package VSIX
+        run: |
+          mkdir -p dist
+          npx vsce package -o ./dist/filetraits-${{ steps.version.outputs.version }}.vsix --no-yarn
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          files: dist/*.vsix
+
+      - name: Publish to VS Code Marketplace
+        if: env.VSCE_PAT != ''
+        run: npx vsce publish --no-yarn
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
