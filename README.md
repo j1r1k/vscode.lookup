@@ -1,4 +1,4 @@
-# Lookup
+# filelookup
 
 A VS Code extension that provides a quick-pick file navigator with segment-based autocomplete. Open a fuzzy file finder, tab-complete through path segments, and create new files on the fly.
 
@@ -12,17 +12,17 @@ While the prompt is open, press `Tab` to autocomplete the next path segment and 
 
 ## Keybindings
 
-| Keybinding    | Command                  | When                          |
-|---------------|--------------------------|-------------------------------|
-| `Ctrl+L`      | Open lookup prompt       | Always                        |
-| `Tab`         | Autocomplete forward     | Lookup prompt is open         |
-| `Shift+Tab`   | Autocomplete backward    | Lookup prompt is open         |
+| Keybinding  | Command               | When                      |
+| ----------- | --------------------- | ------------------------- |
+| `Ctrl+L`    | Open lookup prompt    | Always                    |
+| `Tab`       | Autocomplete forward  | filelookup prompt is open |
+| `Shift+Tab` | Autocomplete backward | filelookup prompt is open |
 
 ## Configuration
 
-| Setting              | Type       | Default      | Description                                              |
-|----------------------|------------|--------------|----------------------------------------------------------|
-| `lookup.separators`  | `string[]` | `[".", "/"]` | Characters treated as segment boundaries for autocomplete |
+| Setting                 | Type       | Default      | Description                                               |
+| ----------------------- | ---------- | ------------ | --------------------------------------------------------- |
+| `filelookup.separators` | `string[]` | `[".", "/"]` | Characters treated as segment boundaries for autocomplete |
 
 Separators determine where path segments begin and end. For example, with the default `[".", "/"]`, both `daily.2026.01.md` and `src/components/Button.tsx` are split at each `.` and `/` for tab-completion.
 
@@ -30,6 +30,6 @@ To use a different convention (e.g. hyphen-separated notes), configure:
 
 ```json
 {
-  "lookup.separators": ["-", "."]
+  "filelookup.separators": ["-", "."]
 }
 ```

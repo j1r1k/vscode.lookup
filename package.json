@@ -1,6 +1,6 @@
 {
-  "name": "lookup",
-  "displayName": "lookup",
+  "name": "filelookup",
+  "displayName": "filelookup",
   "publisher": "marsi-dev",
   "description": "",
   "repository": {
@@ -19,22 +19,22 @@
   "contributes": {
     "commands": [
       {
-        "command": "lookup.showPrompt",
-        "title": "lookup: Show Prompt"
+        "command": "filelookup.showPrompt",
+        "title": "filelookup: Show Prompt"
       },
       {
-        "command": "lookup.autocomplete",
-        "title": "Lookup Autocomplete"
+        "command": "filelookup.autocomplete",
+        "title": "filelookup: Autocomplete"
       },
       {
-        "command": "lookup.autocompleteBackwards",
-        "title": "Lookup Autocomplete Backwards"
+        "command": "filelookup.autocompleteBackwards",
+        "title": "filelookup: Autocomplete Backwards"
       }
     ],
     "configuration": {
-      "title": "Lookup",
+      "title": "filelookup",
       "properties": {
-        "lookup.separators": {
+        "filelookup.separators": {
           "type": "array",
           "items": {
             "type": "string",
@@ -51,18 +51,18 @@
     },
     "keybindings": [
       {
-        "command": "lookup.showPrompt",
+        "command": "filelookup.showPrompt",
         "key": "ctrl+l"
       },
       {
-        "command": "lookup.autocomplete",
+        "command": "filelookup.autocomplete",
         "key": "tab",
-        "when": "lookup.isQuickPickOpen"
+        "when": "filelookup.isQuickPickOpen"
       },
       {
-        "command": "lookup.autocompleteBackwards",
+        "command": "filelookup.autocompleteBackwards",
         "key": "shift+tab",
-        "when": "lookup.isQuickPickOpen"
+        "when": "filelookup.isQuickPickOpen"
       }
     ]
   },
@@ -73,8 +73,8 @@
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
     "test": "vscode-test",
-    "vscode:package": "mkdir -p dist && vsce package -o ./dist/lookup.vsix --no-yarn",
-    "vscode:deploy:local": "npm run vscode:package && code --install-extension ./dist/lookup.vsix --force",
+    "vscode:package": "mkdir -p dist && vsce package -o ./dist/filelookup.vsix --no-yarn",
+    "vscode:deploy:local": "npm run vscode:package && code --install-extension ./dist/filelookup.vsix --force",
     "release:patch": "npm version patch && git push && git push --tags",
     "release:minor": "npm version minor && git push && git push --tags",
     "release:major": "npm version major && git push && git push --tags"

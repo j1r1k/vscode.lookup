@@ -11,7 +11,7 @@ import {
   makeCreateItem,
   resetAutocompleteState,
   resetSearchState,
-} from "./lookup.js";
+} from "./filelookup";
 
 const ITEM_SEPARATOR: LookupQuickPickItem = {
   label: "Header",
@@ -20,7 +20,9 @@ const ITEM_SEPARATOR: LookupQuickPickItem = {
 };
 
 export async function showPrompt(
-  state: { quickPick: vscode.QuickPick<LookupQuickPickItem> | undefined } & AutocompleteState,
+  state: {
+    quickPick: vscode.QuickPick<LookupQuickPickItem> | undefined;
+  } & AutocompleteState,
   workspaceRoot: string,
   initialValue: string | undefined,
 ): Promise<LookupQuickPickItem | undefined> {
@@ -32,7 +34,7 @@ export async function showPrompt(
     quickPick.matchOnDetail = false;
     vscode.commands.executeCommand(
       "setContext",
-      "lookup.isQuickPickOpen",
+      "filelookup.isQuickPickOpen",
       true,
     );
 
@@ -44,7 +46,9 @@ export async function showPrompt(
     }
     quickPick.canSelectMany = false;
 
-    const separators = vscode.workspace.getConfiguration("lookup").get<string[]>("separators", [".", "/"]);
+    const separators = vscode.workspace
+      .getConfiguration("lookup")
+      .get<string[]>("separators", [".", "/"]);
 
     const performSearch = async (value: string) => {
       resetSearchState(state, value, separators);
@@ -121,7 +125,7 @@ export async function showPrompt(
     quickPick.onDidHide(() => {
       vscode.commands.executeCommand(
         "setContext",
-        "lookup.isQuickPickOpen",
+        "filelookup.isQuickPickOpen",
         false,
       );
       quickPick.dispose();
@@ -141,7 +145,7 @@ export function activate(context: vscode.ExtensionContext) {
   };
 
   const disposable = vscode.commands.registerCommand(
-    "lookup.showPrompt",
+    "filelookup.showPrompt",
     async () => {
       const activeEditor = vscode.window.activeTextEditor;
 
@@ -197,7 +201,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(disposable);
 
-  vscode.commands.registerCommand("lookup.autocomplete", () => {
+  vscode.commands.registerCommand("filelookup.autocomplete", () => {
     const activeQuickPick = state.quickPick;
     if (!activeQuickPick) {
       return;
@@ -210,7 +214,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  vscode.commands.registerCommand("lookup.autocompleteBackwards", () => {
+  vscode.commands.registerCommand("filelookup.autocompleteBackwards", () => {
     const activeQuickPick = state.quickPick;
     if (!activeQuickPick) {
       return;
