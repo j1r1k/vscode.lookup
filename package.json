@@ -7,7 +7,7 @@
     "url": "https://github.com/j1r1k/vscode.lookup",
     "type": "git"
   },
-  "version": "0.0.1",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.108.0"
   },
