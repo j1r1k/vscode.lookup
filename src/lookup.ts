@@ -127,6 +127,7 @@ export const collectSearchSuffixes = (
         existingSuffixes.add(suffix);
       }
     }
+    state.suffixes.sort();
   }
 };
 

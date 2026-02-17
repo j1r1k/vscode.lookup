@@ -354,6 +354,33 @@ suite("collectSearchSuffixes", () => {
     assert.deepStrictEqual(state.suffixes, ["app"]);
   });
 
+  test("sorts suffixes alphabetically", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "src/";
+    state.suffixes = [];
+
+    collectSearchSuffixes(state, "src/", [
+      "src/utils.ts",
+      "src/app.ts",
+      "src/lib.ts",
+    ], seps);
+
+    assert.deepStrictEqual(state.suffixes, ["app", "lib", "utils"]);
+  });
+
+  test("maintains alphabetical order when appending new suffixes", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "daily.";
+    state.suffixes = ["2026"];
+
+    collectSearchSuffixes(state, "daily.", [
+      "daily.2025.01.md",
+      "daily.2027.01.md",
+    ], seps);
+
+    assert.deepStrictEqual(state.suffixes, ["2025", "2026", "2027"]);
+  });
+
   test("splits on slash with unified separators", () => {
     const state = createAutocompleteState();
     state.baseValue = "src/";
