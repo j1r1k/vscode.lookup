@@ -8,6 +8,7 @@ import {
   rotateSuffixes,
   rotateSuffixesBackward,
   makeCreateItem,
+  shouldResetBase,
 } from "../lookup.js";
 
 suite("takeWhile", () => {
@@ -121,6 +122,28 @@ suite("filterSuffixes", () => {
       filterSuffixes(["components/Button", "config", "utils"], ""),
       ["components/Button", "config", "utils"],
     );
+  });
+});
+
+suite("shouldResetBase", () => {
+  test("returns true for empty string", () => {
+    assert.strictEqual(shouldResetBase(""), true);
+  });
+
+  test("returns true for trailing slash", () => {
+    assert.strictEqual(shouldResetBase("src/"), true);
+  });
+
+  test("returns true for trailing dot", () => {
+    assert.strictEqual(shouldResetBase("file."), true);
+  });
+
+  test("returns false for normal path segment", () => {
+    assert.strictEqual(shouldResetBase("src/app"), false);
+  });
+
+  test("returns false for filename without trailing dot", () => {
+    assert.strictEqual(shouldResetBase("README"), false);
   });
 });
 

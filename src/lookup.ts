@@ -44,6 +44,10 @@ export const filterSuffixes = (suffixes: string[], prefix: string): string[] => 
   return suffixes.filter(s => s.startsWith(prefix));
 };
 
+export const shouldResetBase = (value: string): boolean => {
+  return value === "" || value.endsWith("/") || value.endsWith(".");
+};
+
 export const makeCreateItem = (uri: vscode.Uri): LookupQuickPickItem => {
   return {
     label: "Create",

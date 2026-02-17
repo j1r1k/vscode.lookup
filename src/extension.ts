@@ -9,6 +9,7 @@ import {
   makeCreateItem,
   rotateSuffixes,
   rotateSuffixesBackward,
+  shouldResetBase,
 } from "./lookup.js";
 
 const ITEM_SEPARATOR: LookupQuickPickItem = {
@@ -71,21 +72,11 @@ export async function showPrompt(
     //   }
     // });
 
-    quickPick.onDidChangeValue(async (value) => {
-      // if (!value) {
-      //   quickPick.items = [];
-      //   return;
-      // }
-
-      if (state.isAutocompleting) {
-        state.isAutocompleting = false;
-        return;
-      }
-
+    const performSearch = async (value: string) => {
       state.typedPrefix = undefined;
       state.filteredSuffixes = [];
 
-      if (value.endsWith("/") || value.endsWith(".")) {
+      if (shouldResetBase(value)) {
         state.suffixes = [];
         state.baseValue = value;
       }
@@ -139,7 +130,18 @@ export async function showPrompt(
       } finally {
         quickPick.busy = false;
       }
+    };
+
+    quickPick.onDidChangeValue(async (value) => {
+      if (state.isAutocompleting) {
+        state.isAutocompleting = false;
+        return;
+      }
+      await performSearch(value);
     });
+
+    // Populate items for the initial value
+    performSearch(quickPick.value);
 
     quickPick.onDidAccept(() => {
       quickPick.hide();
