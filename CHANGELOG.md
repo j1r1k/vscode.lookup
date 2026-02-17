@@ -1,9 +1,18 @@
 # Change Log
 
-All notable changes to the "open-or-create" extension will be documented in this file.
+## [0.1.2] - 2026-02-17
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+Version bump.
 
-## [Unreleased]
+## [0.1.1] - 2026-02-17
 
-- Initial release
+Renamed extension to `filelookup`.
+
+## [0.1.0] - 2026-02-09
+
+### Added
+
+- Quick-pick file navigator with fuzzy matching (`Ctrl+L`)
+- Tab/Shift+Tab autocomplete through path segments
+- Configurable separators (`filelookup.separators`)
+- Create new files directly from the lookup prompt

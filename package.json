@@ -2,7 +2,7 @@
   "name": "filelookup",
   "displayName": "filelookup",
   "publisher": "marsi-dev",
-  "description": "",
+  "description": "Quick-pick file navigator with segment-based autocomplete, inspired by Dendron lookup.",
   "repository": {
     "url": "https://github.com/j1r1k/vscode.lookup",
     "type": "git"
