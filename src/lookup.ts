@@ -57,3 +57,81 @@ export const makeCreateItem = (uri: vscode.Uri): LookupQuickPickItem => {
     uri,
   };
 };
+
+export interface AutocompleteState {
+  baseValue: string | undefined;
+  suffixes: string[];
+  typedPrefix: string | undefined;
+  filteredSuffixes: string[];
+  isAutocompleting: boolean;
+}
+
+export const createAutocompleteState = (): AutocompleteState => ({
+  baseValue: undefined,
+  suffixes: [],
+  typedPrefix: undefined,
+  filteredSuffixes: [],
+  isAutocompleting: false,
+});
+
+export const resetAutocompleteState = (state: AutocompleteState): void => {
+  state.baseValue = undefined;
+  state.suffixes = [];
+  state.typedPrefix = undefined;
+  state.filteredSuffixes = [];
+  state.isAutocompleting = false;
+};
+
+export const updateStateFromSearch = (
+  state: AutocompleteState,
+  value: string,
+  relativePaths: string[],
+): void => {
+  state.typedPrefix = undefined;
+  state.filteredSuffixes = [];
+
+  if (shouldResetBase(value)) {
+    state.suffixes = [];
+    state.baseValue = value;
+  }
+
+  if (state.baseValue === value) {
+    const existingSuffixes = new Set(state.suffixes);
+    for (const relative of relativePaths) {
+      const suffix = extractSuffix(relative, value);
+      if (!existingSuffixes.has(suffix)) {
+        state.suffixes = [...state.suffixes, suffix];
+        existingSuffixes.add(suffix);
+      }
+    }
+  }
+};
+
+export const applyAutocomplete = (
+  state: AutocompleteState,
+  currentValue: string,
+  direction: "forward" | "backward",
+): string | undefined => {
+  if (state.typedPrefix === undefined) {
+    state.typedPrefix = currentValue.substring(
+      (state.baseValue ?? "").length,
+    );
+    state.filteredSuffixes = filterSuffixes(state.suffixes, state.typedPrefix);
+  }
+
+  if (state.filteredSuffixes.length === 0) {
+    return undefined;
+  }
+
+  if (direction === "backward") {
+    state.filteredSuffixes = rotateSuffixesBackward(state.filteredSuffixes);
+  }
+
+  const newValue = (state.baseValue ?? "") + state.filteredSuffixes[0];
+
+  if (direction === "forward") {
+    state.filteredSuffixes = rotateSuffixes(state.filteredSuffixes);
+  }
+
+  return newValue;
+};

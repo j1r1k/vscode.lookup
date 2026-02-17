@@ -9,6 +9,10 @@ import {
   rotateSuffixesBackward,
   makeCreateItem,
   shouldResetBase,
+  createAutocompleteState,
+  resetAutocompleteState,
+  updateStateFromSearch,
+  applyAutocomplete,
 } from "../lookup.js";
 
 suite("takeWhile", () => {
@@ -157,5 +161,200 @@ suite("makeCreateItem", () => {
     assert.strictEqual(item.alwaysShow, true);
     assert.strictEqual(item.detail, "File does not exist. Create?");
     assert.strictEqual(item.uri, uri);
+  });
+});
+
+suite("createAutocompleteState", () => {
+  test("returns correct initial values", () => {
+    const state = createAutocompleteState();
+
+    assert.strictEqual(state.baseValue, undefined);
+    assert.deepStrictEqual(state.suffixes, []);
+    assert.strictEqual(state.typedPrefix, undefined);
+    assert.deepStrictEqual(state.filteredSuffixes, []);
+    assert.strictEqual(state.isAutocompleting, false);
+  });
+});
+
+suite("resetAutocompleteState", () => {
+  test("resets dirty state back to defaults", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "src/";
+    state.suffixes = ["app", "lib"];
+    state.typedPrefix = "a";
+    state.filteredSuffixes = ["app"];
+    state.isAutocompleting = true;
+
+    resetAutocompleteState(state);
+
+    assert.strictEqual(state.baseValue, undefined);
+    assert.deepStrictEqual(state.suffixes, []);
+    assert.strictEqual(state.typedPrefix, undefined);
+    assert.deepStrictEqual(state.filteredSuffixes, []);
+    assert.strictEqual(state.isAutocompleting, false);
+  });
+});
+
+suite("updateStateFromSearch", () => {
+  test("resets typedPrefix and filteredSuffixes", () => {
+    const state = createAutocompleteState();
+    state.typedPrefix = "app";
+    state.filteredSuffixes = ["app/main"];
+
+    updateStateFromSearch(state, "src/app", []);
+
+    assert.strictEqual(state.typedPrefix, undefined);
+    assert.deepStrictEqual(state.filteredSuffixes, []);
+  });
+
+  test("resets base on empty string", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "old/";
+    state.suffixes = ["leftover"];
+
+    updateStateFromSearch(state, "", ["readme.md"]);
+
+    assert.strictEqual(state.baseValue, "");
+    assert.deepStrictEqual(state.suffixes, ["readme"]);
+  });
+
+  test("resets base on trailing slash", () => {
+    const state = createAutocompleteState();
+
+    updateStateFromSearch(state, "src/", ["src/app.ts", "src/lib.ts"]);
+
+    assert.strictEqual(state.baseValue, "src/");
+    assert.deepStrictEqual(state.suffixes, ["app", "lib"]);
+  });
+
+  test("resets base on trailing dot", () => {
+    const state = createAutocompleteState();
+
+    updateStateFromSearch(state, "file.", ["file.ts", "file.js"]);
+
+    assert.strictEqual(state.baseValue, "file.");
+    assert.deepStrictEqual(state.suffixes, ["ts", "js"]);
+  });
+
+  test("preserves base on non-boundary value", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "src/";
+    state.suffixes = ["app", "lib"];
+
+    updateStateFromSearch(state, "src/app", ["src/app.ts", "src/app/main.ts"]);
+
+    assert.strictEqual(state.baseValue, "src/");
+    assert.deepStrictEqual(state.suffixes, ["app", "lib"]);
+  });
+
+  test("collects unique suffixes when baseValue matches", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "src/";
+    state.suffixes = [];
+
+    updateStateFromSearch(state, "src/", [
+      "src/app.ts",
+      "src/app.test.ts",
+      "src/lib.ts",
+    ]);
+
+    assert.deepStrictEqual(state.suffixes, ["app", "lib"]);
+  });
+
+  test("skips collection when baseValue does not match", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "src/";
+    state.suffixes = ["existing"];
+
+    updateStateFromSearch(state, "lib/", ["lib/utils.ts"]);
+
+    // baseValue was reset to "lib/" because trailing slash triggers reset,
+    // and then suffixes are collected for the new base
+    assert.strictEqual(state.baseValue, "lib/");
+    assert.deepStrictEqual(state.suffixes, ["utils"]);
+  });
+});
+
+suite("applyAutocomplete", () => {
+  test("returns undefined when no suffixes available", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "src/";
+    state.suffixes = [];
+
+    const result = applyAutocomplete(state, "src/", "forward");
+
+    assert.strictEqual(result, undefined);
+  });
+
+  test("captures typedPrefix on first call", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "src/";
+    state.suffixes = ["app", "api", "lib"];
+
+    applyAutocomplete(state, "src/a", "forward");
+
+    assert.strictEqual(state.typedPrefix, "a");
+  });
+
+  test("filters by typed prefix", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "src/";
+    state.suffixes = ["app", "api", "lib"];
+
+    const result = applyAutocomplete(state, "src/a", "forward");
+
+    assert.strictEqual(result, "src/app");
+  });
+
+  test("cycles forward through suffixes", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "src/";
+    state.suffixes = ["app", "lib", "utils"];
+
+    const r1 = applyAutocomplete(state, "src/", "forward");
+    assert.strictEqual(r1, "src/app");
+
+    const r2 = applyAutocomplete(state, "src/app", "forward");
+    assert.strictEqual(r2, "src/lib");
+
+    const r3 = applyAutocomplete(state, "src/lib", "forward");
+    assert.strictEqual(r3, "src/utils");
+  });
+
+  test("cycles backward through suffixes", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "src/";
+    state.suffixes = ["app", "lib", "utils"];
+
+    const r1 = applyAutocomplete(state, "src/", "backward");
+    assert.strictEqual(r1, "src/utils");
+
+    const r2 = applyAutocomplete(state, "src/utils", "backward");
+    assert.strictEqual(r2, "src/lib");
+  });
+
+  test("wraps around on repeated forward cycling", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "src/";
+    state.suffixes = ["app", "lib"];
+
+    const r1 = applyAutocomplete(state, "src/", "forward");
+    assert.strictEqual(r1, "src/app");
+
+    const r2 = applyAutocomplete(state, "src/app", "forward");
+    assert.strictEqual(r2, "src/lib");
+
+    const r3 = applyAutocomplete(state, "src/lib", "forward");
+    assert.strictEqual(r3, "src/app");
+  });
+
+  test("returns undefined when no suffixes match typed prefix", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "src/";
+    state.suffixes = ["app", "lib"];
+
+    const result = applyAutocomplete(state, "src/z", "forward");
+
+    assert.strictEqual(result, undefined);
   });
 });
