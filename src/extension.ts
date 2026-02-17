@@ -25,6 +25,7 @@ export async function showPrompt(
     suffixes: string[];
     typedPrefix: string | undefined;
     filteredSuffixes: string[];
+    isAutocompleting: boolean;
   },
   workspaceRoot: string,
   initialValue: string | undefined,
@@ -75,6 +76,11 @@ export async function showPrompt(
       //   quickPick.items = [];
       //   return;
       // }
+
+      if (state.isAutocompleting) {
+        state.isAutocompleting = false;
+        return;
+      }
 
       state.typedPrefix = undefined;
       state.filteredSuffixes = [];
@@ -169,6 +175,7 @@ export function activate(context: vscode.ExtensionContext) {
     suffixes: string[];
     typedPrefix: string | undefined;
     filteredSuffixes: string[];
+    isAutocompleting: boolean;
   } = {
     quickPick: undefined,
     baseValue: undefined,
@@ -176,6 +183,7 @@ export function activate(context: vscode.ExtensionContext) {
     suffixes: [],
     typedPrefix: undefined,
     filteredSuffixes: [],
+    isAutocompleting: false,
   };
 
   const disposable = vscode.commands.registerCommand(
@@ -205,6 +213,7 @@ export function activate(context: vscode.ExtensionContext) {
       state.suffixes = [];
       state.typedPrefix = undefined;
       state.filteredSuffixes = [];
+      state.isAutocompleting = false;
 
       const lookupResult = await showPrompt(
         state,
@@ -259,8 +268,10 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
+    state.isAutocompleting = true;
     activeQuickPick.value = state.baseValue + state.filteredSuffixes[0];
     state.filteredSuffixes = rotateSuffixes(state.filteredSuffixes);
+    state.isAutocompleting = false;
   });
 
   vscode.commands.registerCommand("lookup.autocompleteBackwards", () => {
@@ -284,7 +295,9 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     state.filteredSuffixes = rotateSuffixesBackward(state.filteredSuffixes);
+    state.isAutocompleting = true;
     activeQuickPick.value = state.baseValue + state.filteredSuffixes[0];
+    state.isAutocompleting = false;
   });
 }
 
