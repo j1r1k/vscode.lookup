@@ -31,6 +31,21 @@
         "title": "Lookup Autocomplete Backwards"
       }
     ],
+    "configuration": {
+      "title": "Lookup",
+      "properties": {
+        "lookup.separators": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 1,
+            "minLength": 1
+          },
+          "default": [".", "/"],
+          "description": "Characters treated as segment boundaries for autocomplete"
+        }
+      }
+    },
     "keybindings": [
       {
         "command": "lookup.showPrompt",

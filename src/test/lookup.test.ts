@@ -58,20 +58,26 @@ suite("buildSearchPattern", () => {
 });
 
 suite("extractSuffix", () => {
+  const seps = [".", "/"];
+
   test("extracts suffix after prefix", () => {
-    assert.strictEqual(extractSuffix("src/app/main.ts", "src/app/"), "main");
+    assert.strictEqual(extractSuffix("src/app/main.ts", "src/app/", seps), "main");
   });
 
   test("extracts suffix without extension", () => {
-    assert.strictEqual(extractSuffix("readme.md", ""), "readme");
+    assert.strictEqual(extractSuffix("readme.md", "", seps), "readme");
   });
 
-  test("extracts suffix for partial match", () => {
-    assert.strictEqual(extractSuffix("src/components/Button.tsx", "src/"), "components/Button");
+  test("extracts suffix up to first separator", () => {
+    assert.strictEqual(extractSuffix("src/components/Button.tsx", "src/", seps), "components");
   });
 
   test("returns empty string for exact match up to dot", () => {
-    assert.strictEqual(extractSuffix("file.ts", "file"), "");
+    assert.strictEqual(extractSuffix("file.ts", "file", seps), "");
+  });
+
+  test("works with custom separators", () => {
+    assert.strictEqual(extractSuffix("foo-bar-baz.ts", "foo-", ["-", "."]), "bar");
   });
 });
 
@@ -131,36 +137,42 @@ suite("filterSuffixes", () => {
 });
 
 suite("findBase", () => {
+  const seps = [".", "/"];
+
   test("returns empty string for empty input", () => {
-    assert.strictEqual(findBase(""), "");
+    assert.strictEqual(findBase("", seps), "");
   });
 
   test("returns empty string for value without boundary", () => {
-    assert.strictEqual(findBase("dai"), "");
+    assert.strictEqual(findBase("dai", seps), "");
   });
 
   test("returns up to trailing dot", () => {
-    assert.strictEqual(findBase("daily."), "daily.");
+    assert.strictEqual(findBase("daily.", seps), "daily.");
   });
 
   test("returns up to last dot for mid-segment value", () => {
-    assert.strictEqual(findBase("daily.2026"), "daily.");
+    assert.strictEqual(findBase("daily.2026", seps), "daily.");
   });
 
   test("returns up to last dot for multi-segment value", () => {
-    assert.strictEqual(findBase("daily.2026."), "daily.2026.");
+    assert.strictEqual(findBase("daily.2026.", seps), "daily.2026.");
   });
 
   test("returns up to trailing slash", () => {
-    assert.strictEqual(findBase("src/"), "src/");
+    assert.strictEqual(findBase("src/", seps), "src/");
   });
 
   test("returns up to last slash for mid-segment value", () => {
-    assert.strictEqual(findBase("src/app"), "src/");
+    assert.strictEqual(findBase("src/app", seps), "src/");
   });
 
   test("picks later boundary when mixed separators", () => {
-    assert.strictEqual(findBase("src/file.ts"), "src/file.");
+    assert.strictEqual(findBase("src/file.ts", seps), "src/file.");
+  });
+
+  test("works with custom separators", () => {
+    assert.strictEqual(findBase("foo-bar-baz", ["-", "."]), "foo-bar-");
   });
 });
 
@@ -209,13 +221,15 @@ suite("resetAutocompleteState", () => {
 });
 
 suite("resetSearchState", () => {
+  const seps = [".", "/"];
+
   test("resets typedPrefix and filteredSuffixes", () => {
     const state = createAutocompleteState();
     state.baseValue = "src/";
     state.typedPrefix = "app";
     state.filteredSuffixes = ["app/main"];
 
-    resetSearchState(state, "src/app");
+    resetSearchState(state, "src/app", seps);
 
     assert.strictEqual(state.typedPrefix, undefined);
     assert.deepStrictEqual(state.filteredSuffixes, []);
@@ -226,7 +240,7 @@ suite("resetSearchState", () => {
     state.baseValue = "";
     state.suffixes = ["leftover"];
 
-    resetSearchState(state, "");
+    resetSearchState(state, "", seps);
 
     // findBase("") === "" === state.baseValue, so no base reset
     assert.strictEqual(state.baseValue, "");
@@ -238,7 +252,7 @@ suite("resetSearchState", () => {
     state.baseValue = "daily.";
     state.suffixes = ["2026"];
 
-    resetSearchState(state, "dai");
+    resetSearchState(state, "dai", seps);
 
     // findBase("dai") === "" !== "daily.", so base resets
     assert.strictEqual(state.baseValue, "");
@@ -249,7 +263,7 @@ suite("resetSearchState", () => {
     const state = createAutocompleteState();
     state.suffixes = ["old"];
 
-    resetSearchState(state, "src/");
+    resetSearchState(state, "src/", seps);
 
     assert.strictEqual(state.baseValue, "src/");
     assert.deepStrictEqual(state.suffixes, []);
@@ -258,7 +272,7 @@ suite("resetSearchState", () => {
   test("resets base on trailing dot", () => {
     const state = createAutocompleteState();
 
-    resetSearchState(state, "file.");
+    resetSearchState(state, "file.", seps);
 
     assert.strictEqual(state.baseValue, "file.");
     assert.deepStrictEqual(state.suffixes, []);
@@ -269,7 +283,7 @@ suite("resetSearchState", () => {
     state.baseValue = "src/";
     state.suffixes = ["app", "lib"];
 
-    resetSearchState(state, "src/app");
+    resetSearchState(state, "src/app", seps);
 
     // findBase("src/app") === "src/" === state.baseValue
     assert.strictEqual(state.baseValue, "src/");
@@ -278,6 +292,8 @@ suite("resetSearchState", () => {
 });
 
 suite("collectSearchSuffixes", () => {
+  const seps = [".", "/"];
+
   test("collects unique suffixes when value equals baseValue", () => {
     const state = createAutocompleteState();
     state.baseValue = "src/";
@@ -287,7 +303,7 @@ suite("collectSearchSuffixes", () => {
       "src/app.ts",
       "src/app.test.ts",
       "src/lib.ts",
-    ]);
+    ], seps);
 
     assert.deepStrictEqual(state.suffixes, ["app", "lib"]);
   });
@@ -300,7 +316,7 @@ suite("collectSearchSuffixes", () => {
     collectSearchSuffixes(state, "dai", [
       "daily.2026.01.md",
       "daily.2026.02.md",
-    ]);
+    ], seps);
 
     assert.deepStrictEqual(state.suffixes, ["daily"]);
   });
@@ -310,7 +326,7 @@ suite("collectSearchSuffixes", () => {
     state.baseValue = "src/";
     state.suffixes = ["existing"];
 
-    collectSearchSuffixes(state, "lib/", ["lib/utils.ts"]);
+    collectSearchSuffixes(state, "lib/", ["lib/utils.ts"], seps);
 
     assert.deepStrictEqual(state.suffixes, ["existing"]);
   });
@@ -323,7 +339,7 @@ suite("collectSearchSuffixes", () => {
     collectSearchSuffixes(state, "src/", [
       "src/app.ts",
       "src/lib.ts",
-    ]);
+    ], seps);
 
     assert.deepStrictEqual(state.suffixes, ["app", "lib"]);
   });
@@ -333,9 +349,23 @@ suite("collectSearchSuffixes", () => {
     state.baseValue = "src/";
     state.suffixes = ["app"];
 
-    collectSearchSuffixes(state, "src/", []);
+    collectSearchSuffixes(state, "src/", [], seps);
 
     assert.deepStrictEqual(state.suffixes, ["app"]);
+  });
+
+  test("splits on slash with unified separators", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "src/";
+    state.suffixes = [];
+
+    collectSearchSuffixes(state, "src/", [
+      "src/components/Button.tsx",
+      "src/components/Input.tsx",
+      "src/utils/helpers.ts",
+    ], seps);
+
+    assert.deepStrictEqual(state.suffixes, ["components", "utils"]);
   });
 });
 
@@ -424,20 +454,22 @@ suite("applyAutocomplete", () => {
 });
 
 suite("cycling integration", () => {
+  const seps = [".", "/"];
+
   test("backspace past boundary resets base and collects new suffixes", () => {
     const state = createAutocompleteState();
 
     // User types "daily." → base becomes "daily."
-    resetSearchState(state, "daily.");
+    resetSearchState(state, "daily.", seps);
     collectSearchSuffixes(state, "daily.", [
       "daily.2026.01.md",
       "daily.2026.02.md",
-    ]);
+    ], seps);
     assert.strictEqual(state.baseValue, "daily.");
     assert.deepStrictEqual(state.suffixes, ["2026"]);
 
     // User backspaces to "dai" → base resets to ""
-    resetSearchState(state, "dai");
+    resetSearchState(state, "dai", seps);
     assert.strictEqual(state.baseValue, "");
     assert.deepStrictEqual(state.suffixes, []);
 
@@ -445,7 +477,7 @@ suite("cycling integration", () => {
     collectSearchSuffixes(state, "dai", [
       "daily.2026.01.md",
       "daily.2026.02.md",
-    ]);
+    ], seps);
     assert.deepStrictEqual(state.suffixes, ["daily"]);
 
     // Tab completes to "daily"
@@ -457,12 +489,12 @@ suite("cycling integration", () => {
     const state = createAutocompleteState();
 
     // Simulate search at "src/"
-    resetSearchState(state, "src/");
+    resetSearchState(state, "src/", seps);
     collectSearchSuffixes(state, "src/", [
       "src/app.ts",
       "src/lib.ts",
       "src/utils.ts",
-    ]);
+    ], seps);
 
     // First tab → "src/app"
     const r1 = applyAutocomplete(state, "src/", "forward");
@@ -479,5 +511,22 @@ suite("cycling integration", () => {
     // Wraps around
     const r4 = applyAutocomplete(state, "src/utils", "forward");
     assert.strictEqual(r4, "src/app");
+  });
+
+  test("custom separators work end-to-end", () => {
+    const customSeps = ["-", "."];
+    const state = createAutocompleteState();
+
+    resetSearchState(state, "proj-", customSeps);
+    collectSearchSuffixes(state, "proj-", [
+      "proj-alpha-v1.ts",
+      "proj-beta-v2.ts",
+    ], customSeps);
+
+    assert.strictEqual(state.baseValue, "proj-");
+    assert.deepStrictEqual(state.suffixes, ["alpha", "beta"]);
+
+    const r1 = applyAutocomplete(state, "proj-", "forward");
+    assert.strictEqual(r1, "proj-alpha");
   });
 });

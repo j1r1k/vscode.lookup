@@ -44,8 +44,10 @@ export async function showPrompt(
     }
     quickPick.canSelectMany = false;
 
+    const separators = vscode.workspace.getConfiguration("lookup").get<string[]>("separators", [".", "/"]);
+
     const performSearch = async (value: string) => {
-      resetSearchState(state, value);
+      resetSearchState(state, value, separators);
 
       const pattern = buildSearchPattern(value);
 
@@ -56,7 +58,7 @@ export async function showPrompt(
         const relativePaths = uris.map((uri) =>
           vscode.workspace.asRelativePath(uri),
         );
-        collectSearchSuffixes(state, value, relativePaths);
+        collectSearchSuffixes(state, value, relativePaths, separators);
 
         let exactMatch = false;
 

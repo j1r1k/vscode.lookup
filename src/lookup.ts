@@ -22,8 +22,16 @@ export const buildSearchPattern = (value: string): string => {
   return value === "" ? "**/*" : `${value}*`;
 };
 
-export const extractSuffix = (relativePath: string, prefix: string): string => {
-  return relativePath.substring(prefix.length).split(".", 1)[0];
+export const extractSuffix = (relativePath: string, prefix: string, separators: string[]): string => {
+  const remainder = relativePath.substring(prefix.length);
+  let firstSep = -1;
+  for (const sep of separators) {
+    const idx = remainder.indexOf(sep);
+    if (idx !== -1 && (firstSep === -1 || idx < firstSep)) {
+      firstSep = idx;
+    }
+  }
+  return firstSep === -1 ? remainder : remainder.substring(0, firstSep);
 };
 
 export const rotateSuffixes = (suffixes: string[]): string[] => {
@@ -44,10 +52,14 @@ export const filterSuffixes = (suffixes: string[], prefix: string): string[] => 
   return suffixes.filter(s => s.startsWith(prefix));
 };
 
-export const findBase = (value: string): string => {
-  const lastDot = value.lastIndexOf(".");
-  const lastSlash = value.lastIndexOf("/");
-  const lastBoundary = Math.max(lastDot, lastSlash);
+export const findBase = (value: string, separators: string[]): string => {
+  let lastBoundary = -1;
+  for (const sep of separators) {
+    const idx = value.lastIndexOf(sep);
+    if (idx > lastBoundary) {
+      lastBoundary = idx;
+    }
+  }
   return lastBoundary === -1 ? "" : value.substring(0, lastBoundary + 1);
 };
 
@@ -88,11 +100,12 @@ export const resetAutocompleteState = (state: AutocompleteState): void => {
 export const resetSearchState = (
   state: AutocompleteState,
   value: string,
+  separators: string[],
 ): void => {
   state.typedPrefix = undefined;
   state.filteredSuffixes = [];
 
-  const base = findBase(value);
+  const base = findBase(value, separators);
   if (base !== state.baseValue) {
     state.suffixes = [];
     state.baseValue = base;
@@ -103,11 +116,12 @@ export const collectSearchSuffixes = (
   state: AutocompleteState,
   value: string,
   relativePaths: string[],
+  separators: string[],
 ): void => {
   if (value.startsWith(state.baseValue)) {
     const existingSuffixes = new Set(state.suffixes);
     for (const relative of relativePaths) {
-      const suffix = extractSuffix(relative, state.baseValue);
+      const suffix = extractSuffix(relative, state.baseValue, separators);
       if (!existingSuffixes.has(suffix)) {
         state.suffixes = [...state.suffixes, suffix];
         existingSuffixes.add(suffix);
