@@ -44,8 +44,11 @@ export const filterSuffixes = (suffixes: string[], prefix: string): string[] => 
   return suffixes.filter(s => s.startsWith(prefix));
 };
 
-export const shouldResetBase = (value: string): boolean => {
-  return value === "" || value.endsWith("/") || value.endsWith(".");
+export const findBase = (value: string): string => {
+  const lastDot = value.lastIndexOf(".");
+  const lastSlash = value.lastIndexOf("/");
+  const lastBoundary = Math.max(lastDot, lastSlash);
+  return lastBoundary === -1 ? "" : value.substring(0, lastBoundary + 1);
 };
 
 export const makeCreateItem = (uri: vscode.Uri): LookupQuickPickItem => {
@@ -59,27 +62,27 @@ export const makeCreateItem = (uri: vscode.Uri): LookupQuickPickItem => {
 };
 
 export interface AutocompleteState {
-  baseValue: string | undefined;
+  baseValue: string;
   suffixes: string[];
   typedPrefix: string | undefined;
   filteredSuffixes: string[];
-  isAutocompleting: boolean;
+  lastAutocompletedValue: string | undefined;
 }
 
 export const createAutocompleteState = (): AutocompleteState => ({
-  baseValue: undefined,
+  baseValue: "",
   suffixes: [],
   typedPrefix: undefined,
   filteredSuffixes: [],
-  isAutocompleting: false,
+  lastAutocompletedValue: undefined,
 });
 
 export const resetAutocompleteState = (state: AutocompleteState): void => {
-  state.baseValue = undefined;
+  state.baseValue = "";
   state.suffixes = [];
   state.typedPrefix = undefined;
   state.filteredSuffixes = [];
-  state.isAutocompleting = false;
+  state.lastAutocompletedValue = undefined;
 };
 
 export const resetSearchState = (
@@ -89,9 +92,10 @@ export const resetSearchState = (
   state.typedPrefix = undefined;
   state.filteredSuffixes = [];
 
-  if (shouldResetBase(value)) {
+  const base = findBase(value);
+  if (base !== state.baseValue) {
     state.suffixes = [];
-    state.baseValue = value;
+    state.baseValue = base;
   }
 };
 
@@ -100,10 +104,10 @@ export const collectSearchSuffixes = (
   value: string,
   relativePaths: string[],
 ): void => {
-  if (state.baseValue === value) {
+  if (value.startsWith(state.baseValue)) {
     const existingSuffixes = new Set(state.suffixes);
     for (const relative of relativePaths) {
-      const suffix = extractSuffix(relative, value);
+      const suffix = extractSuffix(relative, state.baseValue);
       if (!existingSuffixes.has(suffix)) {
         state.suffixes = [...state.suffixes, suffix];
         existingSuffixes.add(suffix);
@@ -118,9 +122,7 @@ export const applyAutocomplete = (
   direction: "forward" | "backward",
 ): string | undefined => {
   if (state.typedPrefix === undefined) {
-    state.typedPrefix = currentValue.substring(
-      (state.baseValue ?? "").length,
-    );
+    state.typedPrefix = currentValue.substring(state.baseValue.length);
     state.filteredSuffixes = filterSuffixes(state.suffixes, state.typedPrefix);
   }
 
@@ -132,7 +134,7 @@ export const applyAutocomplete = (
     state.filteredSuffixes = rotateSuffixesBackward(state.filteredSuffixes);
   }
 
-  const newValue = (state.baseValue ?? "") + state.filteredSuffixes[0];
+  const newValue = state.baseValue + state.filteredSuffixes[0];
 
   if (direction === "forward") {
     state.filteredSuffixes = rotateSuffixes(state.filteredSuffixes);

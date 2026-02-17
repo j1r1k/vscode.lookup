@@ -8,7 +8,7 @@ import {
   rotateSuffixes,
   rotateSuffixesBackward,
   makeCreateItem,
-  shouldResetBase,
+  findBase,
   createAutocompleteState,
   resetAutocompleteState,
   resetSearchState,
@@ -130,25 +130,37 @@ suite("filterSuffixes", () => {
   });
 });
 
-suite("shouldResetBase", () => {
-  test("returns true for empty string", () => {
-    assert.strictEqual(shouldResetBase(""), true);
+suite("findBase", () => {
+  test("returns empty string for empty input", () => {
+    assert.strictEqual(findBase(""), "");
   });
 
-  test("returns true for trailing slash", () => {
-    assert.strictEqual(shouldResetBase("src/"), true);
+  test("returns empty string for value without boundary", () => {
+    assert.strictEqual(findBase("dai"), "");
   });
 
-  test("returns true for trailing dot", () => {
-    assert.strictEqual(shouldResetBase("file."), true);
+  test("returns up to trailing dot", () => {
+    assert.strictEqual(findBase("daily."), "daily.");
   });
 
-  test("returns false for normal path segment", () => {
-    assert.strictEqual(shouldResetBase("src/app"), false);
+  test("returns up to last dot for mid-segment value", () => {
+    assert.strictEqual(findBase("daily.2026"), "daily.");
   });
 
-  test("returns false for filename without trailing dot", () => {
-    assert.strictEqual(shouldResetBase("README"), false);
+  test("returns up to last dot for multi-segment value", () => {
+    assert.strictEqual(findBase("daily.2026."), "daily.2026.");
+  });
+
+  test("returns up to trailing slash", () => {
+    assert.strictEqual(findBase("src/"), "src/");
+  });
+
+  test("returns up to last slash for mid-segment value", () => {
+    assert.strictEqual(findBase("src/app"), "src/");
+  });
+
+  test("picks later boundary when mixed separators", () => {
+    assert.strictEqual(findBase("src/file.ts"), "src/file.");
   });
 });
 
@@ -169,11 +181,11 @@ suite("createAutocompleteState", () => {
   test("returns correct initial values", () => {
     const state = createAutocompleteState();
 
-    assert.strictEqual(state.baseValue, undefined);
+    assert.strictEqual(state.baseValue, "");
     assert.deepStrictEqual(state.suffixes, []);
     assert.strictEqual(state.typedPrefix, undefined);
     assert.deepStrictEqual(state.filteredSuffixes, []);
-    assert.strictEqual(state.isAutocompleting, false);
+    assert.strictEqual(state.lastAutocompletedValue, undefined);
   });
 });
 
@@ -184,21 +196,22 @@ suite("resetAutocompleteState", () => {
     state.suffixes = ["app", "lib"];
     state.typedPrefix = "a";
     state.filteredSuffixes = ["app"];
-    state.isAutocompleting = true;
+    state.lastAutocompletedValue = "src/app";
 
     resetAutocompleteState(state);
 
-    assert.strictEqual(state.baseValue, undefined);
+    assert.strictEqual(state.baseValue, "");
     assert.deepStrictEqual(state.suffixes, []);
     assert.strictEqual(state.typedPrefix, undefined);
     assert.deepStrictEqual(state.filteredSuffixes, []);
-    assert.strictEqual(state.isAutocompleting, false);
+    assert.strictEqual(state.lastAutocompletedValue, undefined);
   });
 });
 
 suite("resetSearchState", () => {
   test("resets typedPrefix and filteredSuffixes", () => {
     const state = createAutocompleteState();
+    state.baseValue = "src/";
     state.typedPrefix = "app";
     state.filteredSuffixes = ["app/main"];
 
@@ -208,13 +221,26 @@ suite("resetSearchState", () => {
     assert.deepStrictEqual(state.filteredSuffixes, []);
   });
 
-  test("resets base on empty string", () => {
+  test("resets base on empty string when base was empty", () => {
     const state = createAutocompleteState();
-    state.baseValue = "old/";
+    state.baseValue = "";
     state.suffixes = ["leftover"];
 
     resetSearchState(state, "");
 
+    // findBase("") === "" === state.baseValue, so no base reset
+    assert.strictEqual(state.baseValue, "");
+    assert.deepStrictEqual(state.suffixes, ["leftover"]);
+  });
+
+  test("resets base when backspacing past boundary", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "daily.";
+    state.suffixes = ["2026"];
+
+    resetSearchState(state, "dai");
+
+    // findBase("dai") === "" !== "daily.", so base resets
     assert.strictEqual(state.baseValue, "");
     assert.deepStrictEqual(state.suffixes, []);
   });
@@ -238,20 +264,21 @@ suite("resetSearchState", () => {
     assert.deepStrictEqual(state.suffixes, []);
   });
 
-  test("preserves base and suffixes on non-boundary value", () => {
+  test("preserves base and suffixes when base unchanged", () => {
     const state = createAutocompleteState();
     state.baseValue = "src/";
     state.suffixes = ["app", "lib"];
 
     resetSearchState(state, "src/app");
 
+    // findBase("src/app") === "src/" === state.baseValue
     assert.strictEqual(state.baseValue, "src/");
     assert.deepStrictEqual(state.suffixes, ["app", "lib"]);
   });
 });
 
 suite("collectSearchSuffixes", () => {
-  test("collects unique suffixes when baseValue matches", () => {
+  test("collects unique suffixes when value equals baseValue", () => {
     const state = createAutocompleteState();
     state.baseValue = "src/";
     state.suffixes = [];
@@ -265,7 +292,20 @@ suite("collectSearchSuffixes", () => {
     assert.deepStrictEqual(state.suffixes, ["app", "lib"]);
   });
 
-  test("skips collection when baseValue does not match", () => {
+  test("collects suffixes when value starts with baseValue", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "";
+    state.suffixes = [];
+
+    collectSearchSuffixes(state, "dai", [
+      "daily.2026.01.md",
+      "daily.2026.02.md",
+    ]);
+
+    assert.deepStrictEqual(state.suffixes, ["daily"]);
+  });
+
+  test("skips collection when value does not start with baseValue", () => {
     const state = createAutocompleteState();
     state.baseValue = "src/";
     state.suffixes = ["existing"];
@@ -380,5 +420,64 @@ suite("applyAutocomplete", () => {
     const result = applyAutocomplete(state, "src/z", "forward");
 
     assert.strictEqual(result, undefined);
+  });
+});
+
+suite("cycling integration", () => {
+  test("backspace past boundary resets base and collects new suffixes", () => {
+    const state = createAutocompleteState();
+
+    // User types "daily." → base becomes "daily."
+    resetSearchState(state, "daily.");
+    collectSearchSuffixes(state, "daily.", [
+      "daily.2026.01.md",
+      "daily.2026.02.md",
+    ]);
+    assert.strictEqual(state.baseValue, "daily.");
+    assert.deepStrictEqual(state.suffixes, ["2026"]);
+
+    // User backspaces to "dai" → base resets to ""
+    resetSearchState(state, "dai");
+    assert.strictEqual(state.baseValue, "");
+    assert.deepStrictEqual(state.suffixes, []);
+
+    // Search for "dai*" collects suffixes relative to base ""
+    collectSearchSuffixes(state, "dai", [
+      "daily.2026.01.md",
+      "daily.2026.02.md",
+    ]);
+    assert.deepStrictEqual(state.suffixes, ["daily"]);
+
+    // Tab completes to "daily"
+    const result = applyAutocomplete(state, "dai", "forward");
+    assert.strictEqual(result, "daily");
+  });
+
+  test("tab cycling preserves state across multiple completions", () => {
+    const state = createAutocompleteState();
+
+    // Simulate search at "src/"
+    resetSearchState(state, "src/");
+    collectSearchSuffixes(state, "src/", [
+      "src/app.ts",
+      "src/lib.ts",
+      "src/utils.ts",
+    ]);
+
+    // First tab → "src/app"
+    const r1 = applyAutocomplete(state, "src/", "forward");
+    assert.strictEqual(r1, "src/app");
+
+    // Second tab → "src/lib" (cycling continues, no resetSearchState called)
+    const r2 = applyAutocomplete(state, "src/app", "forward");
+    assert.strictEqual(r2, "src/lib");
+
+    // Third tab → "src/utils"
+    const r3 = applyAutocomplete(state, "src/lib", "forward");
+    assert.strictEqual(r3, "src/utils");
+
+    // Wraps around
+    const r4 = applyAutocomplete(state, "src/utils", "forward");
+    assert.strictEqual(r4, "src/app");
   });
 });

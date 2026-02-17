@@ -92,10 +92,11 @@ export async function showPrompt(
     };
 
     quickPick.onDidChangeValue(async (value) => {
-      if (state.isAutocompleting) {
-        state.isAutocompleting = false;
+      if (value === state.lastAutocompletedValue) {
+        state.lastAutocompletedValue = undefined;
         return;
       }
+      state.lastAutocompletedValue = undefined;
       await performSearch(value);
     });
 
@@ -202,9 +203,8 @@ export function activate(context: vscode.ExtensionContext) {
 
     const newValue = applyAutocomplete(state, activeQuickPick.value, "forward");
     if (newValue !== undefined) {
-      state.isAutocompleting = true;
+      state.lastAutocompletedValue = newValue;
       activeQuickPick.value = newValue;
-      state.isAutocompleting = false;
     }
   });
 
@@ -220,9 +220,8 @@ export function activate(context: vscode.ExtensionContext) {
       "backward",
     );
     if (newValue !== undefined) {
-      state.isAutocompleting = true;
+      state.lastAutocompletedValue = newValue;
       activeQuickPick.value = newValue;
-      state.isAutocompleting = false;
     }
   });
 }
