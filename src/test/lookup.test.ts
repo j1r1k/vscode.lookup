@@ -11,7 +11,8 @@ import {
   shouldResetBase,
   createAutocompleteState,
   resetAutocompleteState,
-  updateStateFromSearch,
+  resetSearchState,
+  collectSearchSuffixes,
   applyAutocomplete,
 } from "../lookup.js";
 
@@ -195,13 +196,13 @@ suite("resetAutocompleteState", () => {
   });
 });
 
-suite("updateStateFromSearch", () => {
+suite("resetSearchState", () => {
   test("resets typedPrefix and filteredSuffixes", () => {
     const state = createAutocompleteState();
     state.typedPrefix = "app";
     state.filteredSuffixes = ["app/main"];
 
-    updateStateFromSearch(state, "src/app", []);
+    resetSearchState(state, "src/app");
 
     assert.strictEqual(state.typedPrefix, undefined);
     assert.deepStrictEqual(state.filteredSuffixes, []);
@@ -212,47 +213,50 @@ suite("updateStateFromSearch", () => {
     state.baseValue = "old/";
     state.suffixes = ["leftover"];
 
-    updateStateFromSearch(state, "", ["readme.md"]);
+    resetSearchState(state, "");
 
     assert.strictEqual(state.baseValue, "");
-    assert.deepStrictEqual(state.suffixes, ["readme"]);
+    assert.deepStrictEqual(state.suffixes, []);
   });
 
   test("resets base on trailing slash", () => {
     const state = createAutocompleteState();
+    state.suffixes = ["old"];
 
-    updateStateFromSearch(state, "src/", ["src/app.ts", "src/lib.ts"]);
+    resetSearchState(state, "src/");
 
     assert.strictEqual(state.baseValue, "src/");
-    assert.deepStrictEqual(state.suffixes, ["app", "lib"]);
+    assert.deepStrictEqual(state.suffixes, []);
   });
 
   test("resets base on trailing dot", () => {
     const state = createAutocompleteState();
 
-    updateStateFromSearch(state, "file.", ["file.ts", "file.js"]);
+    resetSearchState(state, "file.");
 
     assert.strictEqual(state.baseValue, "file.");
-    assert.deepStrictEqual(state.suffixes, ["ts", "js"]);
+    assert.deepStrictEqual(state.suffixes, []);
   });
 
-  test("preserves base on non-boundary value", () => {
+  test("preserves base and suffixes on non-boundary value", () => {
     const state = createAutocompleteState();
     state.baseValue = "src/";
     state.suffixes = ["app", "lib"];
 
-    updateStateFromSearch(state, "src/app", ["src/app.ts", "src/app/main.ts"]);
+    resetSearchState(state, "src/app");
 
     assert.strictEqual(state.baseValue, "src/");
     assert.deepStrictEqual(state.suffixes, ["app", "lib"]);
   });
+});
 
+suite("collectSearchSuffixes", () => {
   test("collects unique suffixes when baseValue matches", () => {
     const state = createAutocompleteState();
     state.baseValue = "src/";
     state.suffixes = [];
 
-    updateStateFromSearch(state, "src/", [
+    collectSearchSuffixes(state, "src/", [
       "src/app.ts",
       "src/app.test.ts",
       "src/lib.ts",
@@ -266,12 +270,32 @@ suite("updateStateFromSearch", () => {
     state.baseValue = "src/";
     state.suffixes = ["existing"];
 
-    updateStateFromSearch(state, "lib/", ["lib/utils.ts"]);
+    collectSearchSuffixes(state, "lib/", ["lib/utils.ts"]);
 
-    // baseValue was reset to "lib/" because trailing slash triggers reset,
-    // and then suffixes are collected for the new base
-    assert.strictEqual(state.baseValue, "lib/");
-    assert.deepStrictEqual(state.suffixes, ["utils"]);
+    assert.deepStrictEqual(state.suffixes, ["existing"]);
+  });
+
+  test("appends to existing suffixes without duplicates", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "src/";
+    state.suffixes = ["app"];
+
+    collectSearchSuffixes(state, "src/", [
+      "src/app.ts",
+      "src/lib.ts",
+    ]);
+
+    assert.deepStrictEqual(state.suffixes, ["app", "lib"]);
+  });
+
+  test("does nothing when relativePaths is empty", () => {
+    const state = createAutocompleteState();
+    state.baseValue = "src/";
+    state.suffixes = ["app"];
+
+    collectSearchSuffixes(state, "src/", []);
+
+    assert.deepStrictEqual(state.suffixes, ["app"]);
   });
 });
 

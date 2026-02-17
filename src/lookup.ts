@@ -82,10 +82,9 @@ export const resetAutocompleteState = (state: AutocompleteState): void => {
   state.isAutocompleting = false;
 };
 
-export const updateStateFromSearch = (
+export const resetSearchState = (
   state: AutocompleteState,
   value: string,
-  relativePaths: string[],
 ): void => {
   state.typedPrefix = undefined;
   state.filteredSuffixes = [];
@@ -94,7 +93,13 @@ export const updateStateFromSearch = (
     state.suffixes = [];
     state.baseValue = value;
   }
+};
 
+export const collectSearchSuffixes = (
+  state: AutocompleteState,
+  value: string,
+  relativePaths: string[],
+): void => {
   if (state.baseValue === value) {
     const existingSuffixes = new Set(state.suffixes);
     for (const relative of relativePaths) {

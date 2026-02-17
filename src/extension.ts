@@ -6,10 +6,11 @@ import {
   LookupQuickPickItem,
   applyAutocomplete,
   buildSearchPattern,
+  collectSearchSuffixes,
   createAutocompleteState,
   makeCreateItem,
   resetAutocompleteState,
-  updateStateFromSearch,
+  resetSearchState,
 } from "./lookup.js";
 
 const ITEM_SEPARATOR: LookupQuickPickItem = {
@@ -44,6 +45,8 @@ export async function showPrompt(
     quickPick.canSelectMany = false;
 
     const performSearch = async (value: string) => {
+      resetSearchState(state, value);
+
       const pattern = buildSearchPattern(value);
 
       quickPick.busy = true;
@@ -53,7 +56,7 @@ export async function showPrompt(
         const relativePaths = uris.map((uri) =>
           vscode.workspace.asRelativePath(uri),
         );
-        updateStateFromSearch(state, value, relativePaths);
+        collectSearchSuffixes(state, value, relativePaths);
 
         let exactMatch = false;
 
